@@ -4,10 +4,12 @@ public class User {
 	
 	private String ID;
 	private String username;
+	private boolean online;
 	
-	public User(String id, String name){
+	public User(String id, String username){
 		ID = id;
-		setUsername(name);
+		this.username = username;
+		this.online= false;
 	}
 	
 	public String getID() {
@@ -23,6 +25,14 @@ public class User {
 
 	public void setUsername(String username) {
 		this.username = username;
+	}
+
+	public boolean isOnline() {
+		return online;
+	}
+
+	public void setOnline(boolean online) {
+		this.online = online;
 	}
 
 }
