@@ -5,6 +5,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import it.valsecchi.polypserver.connection.SessionsManager;
+import it.valsecchi.polypserver.data.FilesManager;
 import it.valsecchi.polypserver.data.UsersManager;
 import static it.valsecchi.polypserver.Utility.Log;
 
@@ -27,7 +28,7 @@ public class PolypServer {
 	public String polyp_path;
 	private boolean run_polyp_server = true;
 
-	public PolypServer(String polyp_name, int port, int max_clients,String password) {
+	public PolypServer(String polyp_name, int port, int max_clients,String password, String path) {
 		users_manager = new UsersManager(this);
 		sessions_manager = new SessionsManager(this);
 		files_manager = new FilesManager(this);
@@ -35,6 +36,7 @@ public class PolypServer {
 		this.port = port;
 		this.max_clients = max_clients;
 		this.polyp_password= password;
+		this.polyp_path= path;
 		// inizializzo il server
 		try {
 			polyp_server = new ServerSocket(this.port, this.max_clients);

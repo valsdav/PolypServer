@@ -35,4 +35,8 @@ public class SessionsManager {
 		Session session = new Session(socket,server);
 		this.addSession(session);
 	}
+	
+	public void removeSession(Session session){
+		sessionsList.remove(session);
+	}
 }

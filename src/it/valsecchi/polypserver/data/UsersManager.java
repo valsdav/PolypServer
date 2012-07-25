@@ -46,7 +46,7 @@ public class UsersManager {
 		}
 		// ora si leggono i dati e si creano gli user
 		for (Element e : doc.getRootElement().getChildren("user")) {
-			this.addUser(new User((String) e.getChildText("id"), (String) e
+			this.addUser(new User(e.getChildText("id"), e
 					.getChildText("username")));
 		}
 	}
@@ -92,9 +92,22 @@ public class UsersManager {
 		}
 	}
 
-	public void activateUser(String userid) {
+	public boolean activateUser(String userid) {
 		if (usersMap.containsKey(userid)) {
-			usersMap.get(userid).setOnline(true);
+			if (usersMap.get(userid).isOnline() == true) {
+				return false;
+			} else {
+				usersMap.get(userid).setOnline(true);
+				return true;
+			}
+		} else {
+			return false;
+		}
+	}
+
+	public void deactivateUser(String userid) {
+		if (usersMap.containsKey(userid)) {
+			usersMap.get(userid).setOnline(false);
 		}
 	}
 
