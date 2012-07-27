@@ -31,6 +31,8 @@ public class Session implements Runnable {
 	private ObjectOutputStream output;
 	private PolypServer server;
 	private boolean session_active = false;
+	private boolean session_busy = false;
+	private boolean file_request_active = false;
 
 	public Session(Socket socket, PolypServer server) {
 		// si memorizza il socket della sessione
@@ -43,6 +45,7 @@ public class Session implements Runnable {
 	public void run() {
 		// si avvia il thread della sessione
 		// si acquisiscono gli stream
+		busy();
 		this.getStreams();
 		// la sessione è attiva
 		this.session_active = true;
@@ -72,6 +75,7 @@ public class Session implements Runnable {
 			this.close();
 			return;
 		}
+		free();
 		// ora si sta in attesa di richieste.
 		this.listenForRequests();
 	}
@@ -79,8 +83,32 @@ public class Session implements Runnable {
 	private void listenForRequests() {
 		try {
 			while (this.session_active) {
+				if(this.isSessionBusy()==true){
+					//si attente
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+					}
+					continue;
+				}
 				PMessage cmd = this.readMessage();
-
+				switch (cmd) {
+				case FILE_REQUEST:
+					busy();
+					String file = this.readString();
+					// si controlla che il file sia disponibile
+					if (server.files_manager.isFileAvaiable(file) == true) {
+						// si avvia il processo di richiesta file
+						PMessage result = server.sessions_manager.performFileRequest(file, this);
+						
+						
+					} else {
+						// si risponde che non è disponibile
+						this.sendMessage(PMessage.FILE_NOT_AVAIABLE);
+						free();
+						continue;
+					}
+				}
 			}
 		} catch (StreamException e) {
 
@@ -140,6 +168,7 @@ public class Session implements Runnable {
 	/** Si chiude la sessione */
 	public void close() {
 		try {
+			free();
 			Log.info("chiusura sessione: " + this.session_id);
 			output.flush();
 			output.close();
@@ -194,7 +223,7 @@ public class Session implements Runnable {
 		if (m2 == PMessage.OK) {
 			// ok la connessione è effettuata
 			this.sendMessage(PMessage.SYNCHRONIZED);
-			//la connessione è effettuata
+			// la connessione è effettuata
 		} else if (m2 == PMessage.ERROR) {
 			// Si chiude la connessione
 			this.close();
@@ -204,7 +233,7 @@ public class Session implements Runnable {
 	}
 
 	/** Metodo che legge i messaggi inviati dal client */
-	private PMessage readMessage() throws StreamException {
+	protected PMessage readMessage() throws StreamException {
 		try {
 			return (PMessage) input.readObject();
 		} catch (ClassNotFoundException e) {
@@ -221,7 +250,7 @@ public class Session implements Runnable {
 	 * 
 	 * @throws StreamException
 	 */
-	private String readString() throws StreamException {
+	protected String readString() throws StreamException {
 		try {
 			return (String) input.readObject();
 		} catch (ClassNotFoundException e) {
@@ -256,14 +285,14 @@ public class Session implements Runnable {
 
 	public void sendAvaibleUserList() throws StreamException {
 		try {
-			output.writeObject(server.users_manager.getListAvaibleUser());
+			output.writeObject(server.users_manager.getAvaibleUser());
 		} catch (IOException e) {
 			Log.error("errore invio lista utenti attivi");
 			throw new StreamException("errore invio lista file");
 		}
 	}
 
-	public void sendMessage(PMessage ans) throws StreamException {
+	protected void sendMessage(PMessage ans) throws StreamException {
 		try {
 			output.writeObject(ans);
 			output.flush();
@@ -273,9 +302,19 @@ public class Session implements Runnable {
 		}
 	}
 	
-	protected byte[] readNBytes(int n) throws StreamException{
+	protected void sendString(String str) throws StreamException{
+		try {
+			output.writeObject(str);
+			output.flush();
+		} catch (IOException e) {
+			Log.error("errore invio stringa");
+			throw new StreamException("errore invio stringa");
+		}
+	}
+
+	protected byte[] readNBytes(int n) throws StreamException {
 		byte[] buf = new byte[n];
-		//si leggono
+		// si leggono
 		try {
 			input.read(buf, 0, n);
 		} catch (IOException e) {
@@ -284,9 +323,9 @@ public class Session implements Runnable {
 		}
 		return buf;
 	}
-	
-	protected void writeNBytes(byte[] buf) throws StreamException{
-		//si scrivono
+
+	protected void writeNBytes(byte[] buf) throws StreamException {
+		// si scrivono
 		try {
 			output.write(buf);
 			output.flush();
@@ -296,12 +335,35 @@ public class Session implements Runnable {
 		}
 	}
 
+	/** rende occupata la sessione */
+	protected void busy() {
+		this.session_busy = true;
+	}
+
+	/** rende libera la sessione */
+	protected void free() {
+		this.session_busy = false;
+	}
+
+	/** metodo utilizzato dall'esterno per capire se la sessione è occupata */
+	public boolean isSessionBusy() {
+		return this.session_busy;
+	}
+
+	public void activateFileRequest() {
+		this.file_request_active = true;
+	}
+
 	public Socket getSocket() {
 		return socket;
 	}
 
 	public User getSession_user() {
 		return session_user;
+	}
+
+	public String getUser_id() {
+		return user_id;
 	}
 
 	public String getSession_id() {

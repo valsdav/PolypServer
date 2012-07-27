@@ -32,7 +32,7 @@ public class FilesManager {
 
 	public FilesManager(PolypServer server) {
 		this.server = server;
-		//si caricano i dati
+		// si caricano i dati
 		this.loadFiles();
 	}
 
@@ -40,8 +40,7 @@ public class FilesManager {
 	private void loadFiles() {
 		// si legge il file Users
 		Document doc = new Document();
-		File file = new File(server.polyp_path
-				+ "\\files\\files_data.xml");
+		File file = new File(server.polyp_path + "\\files\\files_data.xml");
 		if (file.exists()) {
 			// solo se esiste si legge se no si lascia così
 			SAXBuilder build = new SAXBuilder();
@@ -50,7 +49,7 @@ public class FilesManager {
 						.build(server.polyp_path + "\\files\\files_data.xml");
 			} catch (JDOMException e) {
 				Log.error("errore lettura dati file");
-			}catch( IOException e1){
+			} catch (IOException e1) {
 				Log.error("errore lettura dati file");
 			}
 		}
@@ -61,16 +60,16 @@ public class FilesManager {
 			}
 		}
 	}
-	
+
 	/** Metodo che scrive i dati degli files nel file files_data */
 	public void writeFiles() {
 		// si crea un document e lo si scrive
 		Document doc = new Document();
 		doc.setRootElement(new Element("files_data"));
-		for (String u:filesMap.keySet()){
+		for (String u : filesMap.keySet()) {
 			Element e = new Element("user_id");
-			e.setAttribute(new Attribute("id",u));
-			for(String f: filesMap.get(u)){
+			e.setAttribute(new Attribute("id", u));
+			for (String f : filesMap.get(u)) {
 				Element fi = new Element("file").setText(f);
 				e.addContent(fi);
 			}
@@ -95,18 +94,54 @@ public class FilesManager {
 			filesMap.put(user_id, new ArrayList<String>());
 		}
 	}
-	
-	public void setFileList(String user_id, List<String> files){
-		if(filesMap.containsKey(user_id)){
+
+	public void setFileList(String user_id, List<String> files) {
+		if (filesMap.containsKey(user_id)) {
 			filesMap.get(user_id).clear();
 			filesMap.get(user_id).addAll(files);
-		}else{
+		} else {
 			filesMap.put(user_id, files);
 		}
 	}
 
-	public Map<String, List<String>> getFileList(){
+	public Map<String, List<String>> getFileList() {
 		return filesMap;
 	}
-	
+
+	/** Metodo che restituisce la lista di file disponibili */
+	public List<String> getAvaiableFiles() {
+		List<String> files = new ArrayList<String>();
+		for (String user : filesMap.keySet()) {
+			if (server.users_manager.isUserAvaiable(user) == true) {
+				files.addAll(filesMap.get(user));
+			}
+		}
+		return files;
+	}
+
+	/** Metodo che controlla se un file è disponibile */
+	public boolean isFileAvaiable(String filename) {
+		for (String f : this.getAvaiableFiles()) {
+			if (f.equals(filename)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Metodo che restituisce l'id dell'user a cui appartiene il filename. Se
+	 * non viene trovato restituisce null
+	 */
+	public String getUserIDFromFile(String fileName) {
+		for (String user : filesMap.keySet()) {
+			for (String file : filesMap.get(user)) {
+				if (file.equals(fileName)) {
+					return user;
+				}
+			}
+		}
+		return null;
+	}
+
 }

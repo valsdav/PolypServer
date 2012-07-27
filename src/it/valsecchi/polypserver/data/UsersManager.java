@@ -122,7 +122,7 @@ public class UsersManager {
 		}
 	}
 	
-	public List<String> getListAvaibleUser(){
+	public List<String> getAvaibleUser(){
 		List<String > us = new ArrayList<String>();
 		for(User u: usersMap.values()){
 			if(u.isOnline()== true){

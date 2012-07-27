@@ -9,6 +9,8 @@ public enum PMessage {
 
 	/** Comunicazione andata a buon fine*/
 	OK,
+	/** Rifiuto*/
+	NO,
 	/** Errore generico*/
 	ERROR,
 	/** Errore trasmissione lista file*/
@@ -20,7 +22,15 @@ public enum PMessage {
     /** Utente correttamente connesso*/
 	CONNECTED,
 	/** Utente sincronizzato*/
-	SYNCHRONIZED;
+	SYNCHRONIZED,
+	/** Richiesta file*/
+	FILE_REQUEST,
+	/** File non disponibile*/
+	FILE_NOT_AVAIABLE,
+	/** Utente occupato*/
+	USER_BUSY,
+	/** Utente non connesso*/
+	USER_NOT_CONNECTED;
 	
 	
 			
