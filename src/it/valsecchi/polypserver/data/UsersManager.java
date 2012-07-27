@@ -4,12 +4,12 @@ import it.valsecchi.polypserver.PolypServer;
 import it.valsecchi.polypserver.exception.WrongPasswordException;
 import static it.valsecchi.polypserver.Utility.Log;
 
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.jdom2.Document;
 import org.jdom2.Element;
@@ -25,7 +25,7 @@ public class UsersManager {
 
 	public UsersManager(PolypServer server) {
 		this.server = server;
-		usersMap = new HashMap<>();
+		usersMap = new HashMap<String, User>();
 		this.loadUsers();
 	}
 
@@ -33,14 +33,17 @@ public class UsersManager {
 	private void loadUsers() {
 		// si legge il file Users
 		Document doc = new Document();
-		if (Files.exists(Paths.get(server.polyp_path
-				+ "\\users\\users_data.xml"))) {
+		File file = new File(server.polyp_path
+				+ "\\users\\users_data.xml");
+		if (file.exists()) {
 			// solo se esiste si legge se no si lascia così
 			SAXBuilder build = new SAXBuilder();
 			try {
 				doc = build
 						.build(server.polyp_path + "\\users\\users_data.xml");
-			} catch (JDOMException | IOException e) {
+			} catch (JDOMException e) {
+				Log.error("errore lettura dati utenti");
+			}catch( IOException e1){
 				Log.error("errore lettura dati utenti");
 			}
 		}
@@ -117,6 +120,16 @@ public class UsersManager {
 		} else {
 			return false;
 		}
+	}
+	
+	public List<String> getListAvaibleUser(){
+		List<String > us = new ArrayList<String>();
+		for(User u: usersMap.values()){
+			if(u.isOnline()== true){
+				us.add(u.getID());
+			}
+		}
+		return us;
 	}
 
 }

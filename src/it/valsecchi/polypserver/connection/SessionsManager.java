@@ -4,7 +4,6 @@ import it.valsecchi.polypserver.PolypServer;
 
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -19,7 +18,7 @@ public class SessionsManager {
 
 	public SessionsManager(PolypServer server) {
 		this.server = server;
-		sessionsList = new ArrayList<>();
+		sessionsList = new ArrayList<Session>();
 	}
 
 	/** Metodo che aggiunge alla lista una sessione e la avvia */

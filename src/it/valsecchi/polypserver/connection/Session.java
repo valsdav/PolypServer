@@ -8,14 +8,11 @@ import it.valsecchi.polypserver.exception.StreamException;
 import it.valsecchi.polypserver.exception.UserAlreadyConnectedException;
 import it.valsecchi.polypserver.exception.WrongPasswordException;
 import static it.valsecchi.polypserver.Utility.Log;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.List;
-import java.util.Map;
 import java.util.StringTokenizer;
 
 /**
@@ -66,7 +63,7 @@ public class Session implements Runnable {
 		}
 		// ora si richiede la lista file e si invia quella del server
 		try {
-			this.manageFileList();
+			this.synchronizeData();
 		} catch (StreamException e) {
 			Log.error("errore stream");
 			this.close();
@@ -82,12 +79,8 @@ public class Session implements Runnable {
 	private void listenForRequests() {
 		try {
 			while (this.session_active) {
-				String cmd = this.readString();
-				switch(cmd){
-				
-				}
-				
-				
+				PMessage cmd = this.readMessage();
+
 			}
 		} catch (StreamException e) {
 
@@ -128,7 +121,7 @@ public class Session implements Runnable {
 			// password errata
 			Log.error("User: " + userid + ", password errata!");
 			// si invia la risposta
-			this.sendConnectionAnswer("WRONG_PASSWORD");
+			this.sendMessage(PMessage.WRONG_PASSWORD);
 			throw e;
 		}
 		// si attiva l'utente
@@ -136,11 +129,11 @@ public class Session implements Runnable {
 		if (connected == false) {
 			// si chiude perchè è già connesso
 			Log.error("user già connesso: " + userid);
-			this.sendConnectionAnswer("ALREADY_CONNECTED");
+			this.sendMessage(PMessage.ALREADY_CONNECTED);
 			throw new UserAlreadyConnectedException();
 		}
 		// si indica all'utente l'avvenuta connessione
-		this.sendConnectionAnswer("CONNECTED");
+		this.sendMessage(PMessage.CONNECTED);
 		this.user_id = userid;
 	}
 
@@ -169,39 +162,72 @@ public class Session implements Runnable {
 	 * @throws StreamException
 	 * @throws GenericException
 	 */
-	private void manageFileList() throws StreamException, GenericException {
+	private void synchronizeData() throws StreamException, GenericException {
 		List<String> file_list = null;
 		try {
 			file_list = this.readFileList();
 		} catch (StreamException e) {
 			// si risponde che c'è stato un'errore
-			this.sendAnswer("ERRORE_LISTA");
+			this.sendMessage(PMessage.ERRORE_LISTA_FILE);
 			throw e;
 		}
 		// si invia l'ok
-		this.sendAnswer("OK");
+		this.sendMessage(PMessage.OK);
 		// si invia al file manager per aggiornarla
 		server.files_manager.setFileList(this.user_id, file_list);
 		// ora si invia la lista file completa
 		this.sendFileList();
 		// si attende la risposta
-		String ans;
-		ans = this.readString();
-		if (ans.equals("OK")) {
-			// ok la connessione è effettuata
-		} else if (ans.equals("ERROR")) {
+		PMessage m = this.readMessage();
+		if (m == PMessage.OK) {
+			// ok si prosegue
+		} else if (m == PMessage.ERROR) {
 			// Si chiude la connessione
 			this.close();
 			Log.error("errore comunicazione lista file");
 			throw new GenericException();
 		}
+		// si invia la lista utenti
+		this.sendAvaibleUserList();
+		// si attende la risposta
+		PMessage m2 = this.readMessage();
+		if (m2 == PMessage.OK) {
+			// ok la connessione è effettuata
+			this.sendMessage(PMessage.SYNCHRONIZED);
+			//la connessione è effettuata
+		} else if (m2 == PMessage.ERROR) {
+			// Si chiude la connessione
+			this.close();
+			Log.error("errore comunicazione lista utenti attivi");
+			throw new GenericException();
+		}
 	}
 
-	/** Metodo che legge le stringhe inviate dal client */
+	/** Metodo che legge i messaggi inviati dal client */
+	private PMessage readMessage() throws StreamException {
+		try {
+			return (PMessage) input.readObject();
+		} catch (ClassNotFoundException e) {
+			Log.error("errore lettura messaggio");
+			throw new StreamException("errore lettura messaggio");
+		} catch (IOException e1) {
+			Log.error("errore lettura stringa");
+			throw new StreamException("errore lettura messaggio");
+		}
+	}
+
+	/**
+	 * Metodo che legge le stringhe inviate dal client
+	 * 
+	 * @throws StreamException
+	 */
 	private String readString() throws StreamException {
 		try {
 			return (String) input.readObject();
-		} catch (ClassNotFoundException | IOException e) {
+		} catch (ClassNotFoundException e) {
+			Log.error("errore lettura stringa");
+			throw new StreamException("errore lettura stringa");
+		} catch (IOException e1) {
 			Log.error("errore lettura stringa");
 			throw new StreamException("errore lettura stringa");
 		}
@@ -210,7 +236,10 @@ public class Session implements Runnable {
 	private List<String> readFileList() throws StreamException {
 		try {
 			return (List<String>) input.readObject();
-		} catch (ClassNotFoundException | IOException e) {
+		} catch (ClassNotFoundException e) {
+			Log.error("errore lettura lista file");
+			throw new StreamException("errore lettura lista file");
+		} catch (IOException e1) {
 			Log.error("errore lettura lista file");
 			throw new StreamException("errore lettura lista file");
 		}
@@ -225,23 +254,45 @@ public class Session implements Runnable {
 		}
 	}
 
-	public void sendConnectionAnswer(String ans) throws StreamException {
+	public void sendAvaibleUserList() throws StreamException {
 		try {
-			output.writeObject(ans);
-			output.flush();
+			output.writeObject(server.users_manager.getListAvaibleUser());
 		} catch (IOException e) {
-			Log.error("errore invio risposta connessione");
-			throw new StreamException("errore invio risposta connessione");
+			Log.error("errore invio lista utenti attivi");
+			throw new StreamException("errore invio lista file");
 		}
 	}
 
-	public void sendAnswer(String ans) throws StreamException {
+	public void sendMessage(PMessage ans) throws StreamException {
 		try {
 			output.writeObject(ans);
 			output.flush();
 		} catch (IOException e) {
-			Log.error("errore invio risposta");
-			throw new StreamException("errore invio risposta");
+			Log.error("errore invio messaggio");
+			throw new StreamException("errore invio messaggio");
+		}
+	}
+	
+	protected byte[] readNBytes(int n) throws StreamException{
+		byte[] buf = new byte[n];
+		//si leggono
+		try {
+			input.read(buf, 0, n);
+		} catch (IOException e) {
+			Log.error("errore lettura trasmissione dati");
+			throw new StreamException("errore lettura trasmissione dati");
+		}
+		return buf;
+	}
+	
+	protected void writeNBytes(byte[] buf) throws StreamException{
+		//si scrivono
+		try {
+			output.write(buf);
+			output.flush();
+		} catch (IOException e) {
+			Log.error("errore scrittura trasmissione dati");
+			throw new StreamException("errore scrittura trasmissione dati");
 		}
 	}
 

@@ -2,10 +2,9 @@ package it.valsecchi.polypserver.data;
 
 import static it.valsecchi.polypserver.Utility.Log;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,14 +40,17 @@ public class FilesManager {
 	private void loadFiles() {
 		// si legge il file Users
 		Document doc = new Document();
-		if (Files.exists(Paths.get(server.polyp_path
-				+ "\\files\\files_data.xml"))) {
+		File file = new File(server.polyp_path
+				+ "\\files\\files_data.xml");
+		if (file.exists()) {
 			// solo se esiste si legge se no si lascia così
 			SAXBuilder build = new SAXBuilder();
 			try {
 				doc = build
 						.build(server.polyp_path + "\\files\\files_data.xml");
-			} catch (JDOMException | IOException e) {
+			} catch (JDOMException e) {
+				Log.error("errore lettura dati file");
+			}catch( IOException e1){
 				Log.error("errore lettura dati file");
 			}
 		}
@@ -61,7 +63,7 @@ public class FilesManager {
 	}
 	
 	/** Metodo che scrive i dati degli files nel file files_data */
-	public void writeUsers() {
+	public void writeFiles() {
 		// si crea un document e lo si scrive
 		Document doc = new Document();
 		doc.setRootElement(new Element("files_data"));
